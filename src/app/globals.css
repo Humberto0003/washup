@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+:root {
+  --title: #363F5F;
+  --primary: #0ea5e9;
+  --secondary: #14b8a6;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --header: #0f766e;
+  --table-header: #969cb2;
+  --button: #0ea5e9;
+  --background: #E7E9EE;
+  --modal: #f0f2f5;
+  --input: #969cb2;
+  --input-border: #d7d7d7;
+  --card-border: #d7d7d7;
+
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: Arial, Helvetica, sans-serif;
+  --font-mono: "Courier New", monospace;
+  --color-title: var(--title);
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-header: var(--header);
+  --color-table-header: var(--table-header);
+  --color-button: var(--button);
+  --color-modal:var(--modal);
+  --color-input: var(--input);
+  --color-input-border: var(--input-border);
+  --color-card-border: var(--card-border);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #E7E9EE;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
