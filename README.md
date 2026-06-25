@@ -1,12 +1,12 @@
 # WashUp
 
-WashUp e uma aplicacao web para gestao de fila de atendimento em lava jato.
+WashUp é uma aplicação web para gestão de fila de atendimento em lava jato.
 
-## Objetivo Academico
+## Objetivo Acadêmico
 
-O projeto foi desenvolvido como atividade academica para demonstrar a criacao
-de uma aplicacao front-end com Next.js, componentizacao, gerenciamento de estado,
-consultas com TanStack Query, formularios validados e interface responsiva.
+O projeto foi desenvolvido como atividade acadêmica para demonstrar a criação
+de uma aplicação front-end com Next.js, componentização, gerenciamento de estado,
+consultas com TanStack Query, formulários validados e interface responsiva.
 
 ## Tecnologias Utilizadas
 
@@ -24,31 +24,31 @@ consultas com TanStack Query, formularios validados e interface responsiva.
 - Dashboard principal com cards de resumo.
 - Kanban com as etapas Aguardando, Em Lavagem e Finalizado.
 - Cadastro de novo atendimento por modal.
-- Validacao de formulario com schema.
-- Avanco de veiculos entre status da fila.
-- Toasts de sucesso para acoes do usuario.
-- Pagina de clientes.
-- Pagina de fidelidade com simulacao de resgate.
-- Pagina publica de acompanhamento da fila.
+- Validação de formulário com schema.
+- Avanço de veículos entre status da fila.
+- Toasts de sucesso para ações do usuário.
+- Página de clientes.
+- Página de fidelidade com simulação de resgate.
+- Página pública de acompanhamento da fila.
 - Layout responsivo para diferentes tamanhos de tela.
 
 ## Rotas Principais
 
 - `/`: tela inicial/login.
-- `/acompanhamento/clientes`: fila publica do cliente.
-- `/acompanhamento/operacional`: area operacional protegida.
+- `/acompanhamento/clientes`: fila pública do cliente.
+- `/acompanhamento/operacional`: área operacional protegida.
 - `/clientes`: clientes, protegido.
 - `/fidelidade`: fidelidade, protegido.
 
-## Observacao Sobre os Dados
+## Observação Sobre os Dados
 
-Nesta etapa, o WashUp nao possui backend, banco de dados, Prisma, API real ou
-autenticacao. Todos os dados sao mockados no front-end e persistidos localmente
+Nesta etapa, o WashUp não possui backend, banco de dados, Prisma, API real ou
+autenticação. Todos os dados são mockados no front-end e persistidos localmente
 com `localStorage`.
 
 ## Como Instalar e Executar
 
-Instale as dependencias:
+Instale as dependências:
 
 ```bash
 npm install
@@ -66,7 +66,7 @@ Acesse no navegador:
 http://localhost:3000
 ```
 
-Para gerar a build de producao:
+Para gerar a build de produção:
 
 ```bash
 npm run build
@@ -80,9 +80,9 @@ Link do deploy:
 https://washup-roan.vercel.app/
 ```
 
-## Repositorio GitHub
+## Repositório GitHub
 
-Link do repositorio:
+Link do repositório:
 
 ```text
 https://github.com/Humberto0003/washup

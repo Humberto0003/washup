@@ -3,7 +3,7 @@ export type QueueStatus = "WAITING" | "WASHING" | "DONE";
 export type WashServiceType =
   | "Lavagem simples"
   | "Lavagem completa"
-  | "Higienizacao interna"
+  | "Higienização interna"
   | "Polimento";
 
 export type QueueItem = {

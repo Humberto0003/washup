@@ -17,9 +17,9 @@ const statusLabel: Record<QueueStatus, string> = {
 };
 
 const statusDescription: Record<QueueStatus, string> = {
-  WAITING: "Seu veiculo esta na fila e sera chamado em breve.",
-  WASHING: "Seu veiculo esta em atendimento agora.",
-  DONE: "Seu veiculo ja foi finalizado.",
+  WAITING: "Seu veículo está na fila e será chamado em breve.",
+  WASHING: "Seu veículo está em atendimento agora.",
+  DONE: "Seu veículo já foi finalizado.",
 };
 
 const steps: { status: QueueStatus; title: string }[] = [
@@ -48,14 +48,18 @@ const VehicleProgress = ({ status }: { status: QueueStatus }) => {
   const currentIndex = steps.findIndex((step) => step.status === status);
 
   return (
-    <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+    <ol
+      className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3"
+      aria-label="Progresso do atendimento"
+    >
       {steps.map((step, index) => {
         const isActive = step.status === status;
         const isComplete = index <= currentIndex;
 
         return (
-          <div
+          <li
             key={step.status}
+            aria-current={isActive ? "step" : undefined}
             className={`rounded-md border p-4 ${
               isComplete
                 ? "border-primary bg-primary/10 text-title"
@@ -73,30 +77,40 @@ const VehicleProgress = ({ status }: { status: QueueStatus }) => {
             {isActive && (
               <p className="mt-1 text-sm text-table-header">Etapa atual</p>
             )}
-          </div>
+          </li>
         );
       })}
-    </div>
+    </ol>
   );
 };
 
 const CustomerVehicleView = ({ item }: { item: QueueItem }) => {
+  const expectedExit = getExpectedExitLabel(item);
+  const plate = formatPlateInput(item.plate);
+
   return (
     <>
       <section className="rounded-md bg-white p-6 shadow-sm">
         <span className="text-sm font-semibold text-primary">WashUp</span>
+        <p className="sr-only" role="status" aria-live="polite">
+          Veículo placa {plate}. Etapa atual: {statusLabel[item.status]}.
+          Previsão de saída: {expectedExit}.
+        </p>
         <div className="mt-3 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
             <h1 className="text-3xl font-semibold text-title">
-              Acompanhamento do veiculo
+              Acompanhamento do veículo
             </h1>
             <p className="mt-2 max-w-2xl text-table-header">
               {statusDescription[item.status]}
             </p>
           </div>
 
-          <span className="w-fit rounded-md bg-background px-4 py-2 text-lg font-semibold text-title">
-            {formatPlateInput(item.plate)}
+          <span
+            aria-label={`Placa do veículo ${plate}`}
+            className="w-fit rounded-md bg-background px-4 py-2 text-lg font-semibold text-title"
+          >
+            {plate}
           </span>
         </div>
 
@@ -112,14 +126,14 @@ const CustomerVehicleView = ({ item }: { item: QueueItem }) => {
         </article>
 
         <article className="rounded-md border border-card-border bg-white p-5 shadow-sm">
-          <span className="text-sm text-table-header">Previsao de saida</span>
+          <span className="text-sm text-table-header">Previsão de saída</span>
           <strong className="mt-2 block text-2xl text-title">
-            {getExpectedExitLabel(item)}
+            {expectedExit}
           </strong>
         </article>
 
         <article className="rounded-md border border-card-border bg-white p-5 shadow-sm">
-          <span className="text-sm text-table-header">Servico contratado</span>
+          <span className="text-sm text-table-header">Serviço contratado</span>
           <strong className="mt-2 block text-2xl text-title">
             {item.serviceType}
           </strong>
@@ -148,7 +162,7 @@ const CustomerVehicleView = ({ item }: { item: QueueItem }) => {
           </div>
 
           <div className="rounded-md bg-background p-4">
-            <span className="text-sm text-table-header">Posicao na etapa</span>
+            <span className="text-sm text-table-header">Posição na etapa</span>
             <strong className="mt-1 block text-title">
               {item.position > 0 ? item.position : "-"}
             </strong>
@@ -207,15 +221,15 @@ export default function AcompanhamentoClientesPage() {
               Informe sua placa
             </h1>
             <p className="mx-auto mt-2 max-w-xl text-table-header">
-              Para acessar o acompanhamento do cliente, volte ao inicio e informe
-              a placa do veiculo.
+              Para acessar o acompanhamento do cliente, volte ao início e informe
+              a placa do veículo.
             </p>
             <button
               type="button"
               onClick={() => router.push("/")}
               className="mt-6 rounded-md bg-primary px-6 py-3 text-sm font-semibold text-white hover:opacity-80"
             >
-              Voltar ao inicio
+              Voltar ao início
             </button>
           </section>
         )}
@@ -224,10 +238,10 @@ export default function AcompanhamentoClientesPage() {
           <section className="rounded-md bg-white p-6 text-center shadow-sm">
             <span className="text-sm font-semibold text-primary">WashUp</span>
             <h1 className="mt-2 text-3xl font-semibold text-title">
-              Veiculo nao encontrado
+              Veículo não encontrado
             </h1>
             <p className="mx-auto mt-2 max-w-xl text-table-header">
-              A placa informada nao esta na fila atual. Confira a placa e tente
+              A placa informada não está na fila atual. Confira a placa e tente
               novamente.
             </p>
             <button
@@ -244,8 +258,8 @@ export default function AcompanhamentoClientesPage() {
 
         <div className="mt-6 rounded-md border border-success/30 bg-success/10 p-4">
           <p className="text-sm font-semibold text-title">
-            Programa de fidelidade: a cada 10 lavagens, voce ganha 1 lavagem
-            simples gratis.
+            Programa de fidelidade: a cada 10 lavagens, você ganha 1 lavagem
+            simples grátis.
           </p>
         </div>
       </section>

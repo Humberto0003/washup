@@ -3,11 +3,11 @@ import { getCpfDigits, getPhoneDigits, isValidPlate } from "@/lib/formatters";
 
 export const queueItemSchema = object({
   customerName: string()
-    .required("O nome do cliente e obrigatorio")
+    .required("O nome do cliente é obrigatório")
     .min(3, "Informe pelo menos 3 caracteres"),
 
   phone: string()
-    .required("O telefone e obrigatorio")
+    .required("O telefone é obrigatório")
     .test(
       "phone-length",
       "Informe um telefone com 11 digitos",
@@ -25,9 +25,9 @@ export const queueItemSchema = object({
     }),
 
   plate: string()
-    .required("A placa e obrigatoria")
+    .required("A placa é obrigatória")
     .defined()
-    .test("plate-format", "Informe uma placa valida", (value) => {
+    .test("plate-format", "Informe uma placa válida", (value) => {
       if (!value) {
         return false;
       }
@@ -36,10 +36,10 @@ export const queueItemSchema = object({
     }),
 
   serviceType: string()
-    .required("O tipo de servico e obrigatorio")
+    .required("O tipo de serviço é obrigatório")
     .oneOf(
-      ["Lavagem simples", "Lavagem completa", "Higienizacao interna", "Polimento"],
-      "Selecione um servico valido"
+      ["Lavagem simples", "Lavagem completa", "Higienização interna", "Polimento"],
+      "Selecione um serviço válido"
     ),
 });
 

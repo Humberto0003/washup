@@ -5,6 +5,7 @@ import { Input } from "@/components/Form/Input";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useWashUp } from "@/hooks/washup/useWashUp";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 
@@ -14,6 +15,7 @@ type LoginFormData = {
 };
 
 export default function Home() {
+  const [loginMessage, setLoginMessage] = useState("");
   const { register, handleSubmit } = useForm<LoginFormData>({
     defaultValues: {
       email: "",
@@ -28,10 +30,12 @@ export default function Home() {
     const user = signIn(data.email, data.password);
 
     if (!user) {
-      toast.error("E-mail ou senha invalidos.");
+      setLoginMessage("E-mail ou senha inválidos.");
+      toast.error("E-mail ou senha inválidos.");
       return;
     }
 
+    setLoginMessage("Login realizado com sucesso.");
     toast.success("Login realizado com sucesso!");
     router.push("/acompanhamento/operacional");
   };
@@ -42,7 +46,7 @@ export default function Home() {
         <div className="mb-8 text-center">
           <h1 className="text-4xl font-bold text-header sm:text-5xl">WashUp</h1>
           <p className="mt-3 text-base font-medium text-title">
-            Gestao inteligente para lava jatos
+            Gestão inteligente para lava jatos
           </p>
         </div>
 
@@ -62,10 +66,20 @@ export default function Home() {
               className="mt-6 flex flex-col gap-4"
               onSubmit={handleSubmit(handleLogin)}
             >
-              <Input type="email" placeholder="E-mail" {...register("email")} />
+              <Input
+                type="email"
+                label="E-mail do operador"
+                placeholder="E-mail"
+                autoComplete="email"
+                required
+                {...register("email")}
+              />
               <Input
                 type="password"
+                label="Senha do operador"
                 placeholder="Senha"
+                autoComplete="current-password"
+                required
                 {...register("password")}
               />
 
@@ -75,6 +89,16 @@ export default function Home() {
               >
                 Entrar como operador
               </button>
+
+              {loginMessage && (
+                <p
+                  role="status"
+                  aria-live="polite"
+                  className="rounded-md bg-background px-4 py-3 text-sm font-semibold text-title"
+                >
+                  {loginMessage}
+                </p>
+              )}
             </form>
           </div>
 
@@ -85,7 +109,7 @@ export default function Home() {
               </span>
               <h2 className="mt-2 text-2xl font-semibold">Sou cliente</h2>
               <p className="mt-2 text-sm leading-6 text-white/80">
-                Informe a placa do seu veiculo para acompanhar apenas o seu
+                Informe a placa do seu veículo para acompanhar apenas o seu
                 atendimento.
               </p>
 
@@ -98,7 +122,7 @@ export default function Home() {
             <div className="mt-8 rounded-md bg-white/10 p-5">
               <p className="text-sm font-semibold text-white">
                 Programa de fidelidade: a cada 10 lavagens, o cliente ganha 1
-                lavagem simples gratis.
+                lavagem simples grátis.
               </p>
             </div>
           </div>

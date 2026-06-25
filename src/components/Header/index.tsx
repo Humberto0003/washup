@@ -11,7 +11,7 @@ export const Header = () => {
 
   const handleLogout = () => {
     signOut();
-    toast.success("Voce saiu do WashUp.");
+    toast.success("Você saiu do WashUp.");
     router.replace("/");
   };
 

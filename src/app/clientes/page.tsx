@@ -50,7 +50,7 @@ function ClientesContent() {
           <div className="mb-6">
             <h1 className="text-2xl font-semibold text-title">Clientes</h1>
             <p className="text-sm text-table-header">
-              Consulte os clientes atendidos, frequencia de visitas e pontos de
+              Consulte os clientes atendidos, frequência de visitas e pontos de
               fidelidade.
             </p>
           </div>
@@ -70,7 +70,7 @@ function ClientesContent() {
             </label>
 
             <label className="flex flex-col gap-2 text-sm font-medium text-title">
-              Direcao
+              Direção
               <select
                 value={sortDirection}
                 onChange={(event) =>

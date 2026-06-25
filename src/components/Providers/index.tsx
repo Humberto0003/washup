@@ -11,7 +11,7 @@ const client =  new QueryClient();
 export function Providers({ children }: ProvidersProps) {
     return (
         <>
-        <ToastContainer position="top-right" autoClose={2500} />
+        <ToastContainer position="top-right" autoClose={2500} role="alert" />
              <QueryClientProvider client={client}>
                {children}
             </QueryClientProvider>

@@ -30,7 +30,7 @@ export const mockQueue: QueueItem[] = [
     phone: "(82) 97730-5566",
     cpf: "987.654.321-00",
     plate: "MNB2C18",
-    serviceType: "Higienizacao interna",
+    serviceType: "Higienização interna",
     status: "WASHING",
     position: 1,
     etaMinutes: 18,

@@ -25,6 +25,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { QueueItem, QueueStatus } from "@/types/washup";
 import { VehicleCard, type VehicleCardProps } from "../VehicleCard";
 import { type ReactNode, useMemo, useState } from "react";
+import { formatPlateInput } from "@/lib/formatters";
 
 export type KanbanBoardProps = {
   items: QueueItem[];
@@ -108,13 +109,19 @@ const DroppableColumn = ({
   return (
     <div
       ref={setNodeRef}
+      aria-labelledby={`kanban-column-${status}`}
       className={`min-h-96 rounded-md border-t-4 ${accent} bg-white/50 p-4 transition-colors ${
         isOver ? "bg-white ring-2 ring-primary/40" : ""
       }`}
     >
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-title">{title}</h2>
-        <span className="rounded-md bg-white px-3 py-1 text-sm font-semibold text-title">
+        <h2 id={`kanban-column-${status}`} className="text-xl font-semibold text-title">
+          {title}
+        </h2>
+        <span
+          aria-label={`${items.length} veículos em ${title}`}
+          className="rounded-md bg-white px-3 py-1 text-sm font-semibold text-title"
+        >
           {items.length}
         </span>
       </div>
@@ -172,6 +179,7 @@ export const KanbanBoard = ({
   canManage = false,
 }: KanbanBoardProps) => {
   const [activeItem, setActiveItem] = useState<QueueItem | null>(null);
+  const [liveMessage, setLiveMessage] = useState("");
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -255,7 +263,81 @@ export const KanbanBoard = ({
       });
     }
 
+    const normalizedItems = normalizeItems(nextItemsByStatus);
+    onReorder?.(normalizedItems);
+    setLiveMessage("Fila reorganizada.");
+  };
+
+  const moveItemToStatus = (id: string, targetStatus: QueueStatus) => {
+    const sourceStatus = findItemStatus(id, itemsByStatus);
+
+    if (!sourceStatus || sourceStatus === targetStatus) {
+      return;
+    }
+
+    const sourceItems = itemsByStatus[sourceStatus];
+    const activeItemIndex = sourceItems.findIndex((item) => item.id === id);
+    const activeQueueItem = sourceItems[activeItemIndex];
+
+    if (!activeQueueItem) {
+      return;
+    }
+
+    const nextItemsByStatus: ItemsByStatus = {
+      WAITING: [...itemsByStatus.WAITING],
+      WASHING: [...itemsByStatus.WASHING],
+      DONE: [...itemsByStatus.DONE],
+    };
+
+    nextItemsByStatus[sourceStatus].splice(activeItemIndex, 1);
+    nextItemsByStatus[targetStatus].push({
+      ...activeQueueItem,
+      status: targetStatus,
+    });
+
     onReorder?.(normalizeItems(nextItemsByStatus));
+    setLiveMessage(
+      `Veículo ${formatPlateInput(activeQueueItem.plate)} movido para ${
+        columns.find((column) => column.status === targetStatus)?.title
+      }.`
+    );
+  };
+
+  const moveItemPosition = (id: string, direction: "UP" | "DOWN") => {
+    const sourceStatus = findItemStatus(id, itemsByStatus);
+
+    if (!sourceStatus) {
+      return;
+    }
+
+    const sourceItems = itemsByStatus[sourceStatus];
+    const activeItemIndex = sourceItems.findIndex((item) => item.id === id);
+    const targetIndex =
+      direction === "UP" ? activeItemIndex - 1 : activeItemIndex + 1;
+
+    if (activeItemIndex < 0 || !sourceItems[targetIndex]) {
+      return;
+    }
+
+    const activeQueueItem = sourceItems[activeItemIndex];
+    const nextItemsByStatus: ItemsByStatus = {
+      WAITING: [...itemsByStatus.WAITING],
+      WASHING: [...itemsByStatus.WASHING],
+      DONE: [...itemsByStatus.DONE],
+    };
+
+    nextItemsByStatus[sourceStatus] = arrayMove(
+      nextItemsByStatus[sourceStatus],
+      activeItemIndex,
+      targetIndex
+    );
+
+    onReorder?.(normalizeItems(nextItemsByStatus));
+    setLiveMessage(
+      `Veículo ${formatPlateInput(activeQueueItem.plate)} movido para ${
+        direction === "UP" ? "cima" : "baixo"
+      }.`
+    );
   };
 
   return (
@@ -266,6 +348,9 @@ export const KanbanBoard = ({
       onDragEnd={handleDragEnd}
       onDragCancel={() => setActiveItem(null)}
     >
+      <p className="sr-only" role="status" aria-live="polite">
+        {liveMessage}
+      </p>
       <section className="mt-10 grid grid-cols-1 gap-5 lg:grid-cols-3">
         {columns.map((column) => {
           const columnItems = itemsByStatus[column.status];
@@ -291,6 +376,17 @@ export const KanbanBoard = ({
                       onEdit={onEdit}
                       onCancel={onCancel}
                       onPriorityChange={onPriorityChange}
+                      onMoveToStatus={moveItemToStatus}
+                      onMovePosition={moveItemPosition}
+                      canMoveUp={columnItems.findIndex(
+                        (columnItem) => columnItem.id === item.id
+                      ) > 0}
+                      canMoveDown={
+                        columnItems.findIndex(
+                          (columnItem) => columnItem.id === item.id
+                        ) <
+                        columnItems.length - 1
+                      }
                       canManage={canManage}
                       disabled={!canManage}
                     />
@@ -298,7 +394,7 @@ export const KanbanBoard = ({
 
                   {columnItems.length === 0 && (
                     <div className="rounded-md border border-dashed border-card-border bg-white p-6 text-center text-sm text-table-header">
-                      Nenhum veiculo nesta etapa.
+                      Nenhum veículo nesta etapa.
                     </div>
                   )}
                 </div>

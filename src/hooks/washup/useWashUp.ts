@@ -29,7 +29,7 @@ const CreateQueueItem = () => {
   return useMutation({
     mutationFn: (data: NewQueueItemData) => createQueueItem(data),
     onSuccess: () => {
-      toast.success("Atendimento adicionado a fila!");
+      toast.success("Atendimento adicionado à fila!");
       queryClient.invalidateQueries({ queryKey: [QUEUE_KEY] });
     },
   });
@@ -45,7 +45,7 @@ const AdvanceQueueItem = () => {
         toast.success("Atendimento finalizado. Cliente recebeu 1 ponto de fidelidade.");
         queryClient.invalidateQueries({ queryKey: [CUSTOMERS_KEY] });
       } else {
-        toast.success("Status do veiculo atualizado!");
+        toast.success("Status do veículo atualizado!");
       }
 
       queryClient.invalidateQueries({ queryKey: [QUEUE_KEY] });
@@ -108,7 +108,7 @@ const ReorderQueueItems = () => {
         queryClient.setQueryData([QUEUE_KEY], context.previousQueue);
       }
 
-      toast.error("Nao foi possivel reorganizar a fila.");
+      toast.error("Não foi possível reorganizar a fila.");
     },
     onSuccess: (items) => {
       queryClient.setQueryData([QUEUE_KEY], items);
@@ -130,7 +130,7 @@ const RedeemBenefit = () => {
   return useMutation({
     mutationFn: (customerId: string) => redeemBenefit(customerId),
     onSuccess: () => {
-      toast.success("Beneficio resgatado com sucesso!");
+      toast.success("Benefício resgatado com sucesso!");
       queryClient.invalidateQueries({ queryKey: [CUSTOMERS_KEY] });
     },
   });

@@ -2,6 +2,7 @@
 
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 import { Input } from "../Form/Input";
@@ -28,6 +29,7 @@ export const CustomerPlateAccess = ({
   isLoading = false,
 }: CustomerPlateAccessProps) => {
   const router = useRouter();
+  const [accessMessage, setAccessMessage] = useState("");
   const {
     handleSubmit,
     register,
@@ -44,7 +46,8 @@ export const CustomerPlateAccess = ({
     const queueItem = findQueueItemByPlate(queueItems, data.plate);
 
     if (!queueItem) {
-      toast.error("Nao encontramos nenhum veiculo com essa placa.");
+      setAccessMessage("Não encontramos nenhum veículo com essa placa.");
+      toast.error("Não encontramos nenhum veículo com essa placa.");
       return;
     }
 
@@ -52,7 +55,8 @@ export const CustomerPlateAccess = ({
       CUSTOMER_PLATE_STORAGE_KEY,
       normalizePlate(queueItem.plate)
     );
-    toast.success("Veiculo encontrado! Abrindo acompanhamento.");
+    setAccessMessage("Veículo encontrado. Abrindo acompanhamento.");
+    toast.success("Veículo encontrado! Abrindo acompanhamento.");
     router.push("/acompanhamento/clientes");
   };
 
@@ -63,10 +67,13 @@ export const CustomerPlateAccess = ({
     >
       <Input
         type="text"
-        placeholder="Placa do veiculo"
+        label="Placa do veículo"
+        placeholder="Placa do veículo"
         {...plateRegister}
         maxLength={8}
         autoComplete="off"
+        required
+        aria-busy={isLoading}
         onChange={(event) => {
           const value = formatPlateInput(event.target.value);
           setValue("plate", value, { shouldValidate: true });
@@ -79,8 +86,18 @@ export const CustomerPlateAccess = ({
         disabled={isLoading}
         className="w-full rounded-md bg-white px-4 py-4 text-sm font-semibold text-header hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
       >
-        {isLoading ? "Consultando fila..." : "Acompanhar meu veiculo"}
+        {isLoading ? "Consultando fila..." : "Acompanhar meu veículo"}
       </button>
+
+      {accessMessage && (
+        <p
+          role="status"
+          aria-live="polite"
+          className="rounded-md bg-white/10 px-4 py-3 text-sm font-semibold text-white"
+        >
+          {accessMessage}
+        </p>
+      )}
     </form>
   );
 };

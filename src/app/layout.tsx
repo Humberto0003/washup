@@ -5,7 +5,7 @@ import { Providers } from "@/components/Providers";
 
 export const metadata: Metadata = {
   title: "WashUp",
-  description: "Sistema de gestao de fila para lava jato",
+  description: "Sistema de gestão de fila para lava jato",
 };
 
 export default function RootLayout({

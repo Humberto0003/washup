@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  type KeyboardEvent as ReactKeyboardEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Input } from "../Form/Input";
 import { QueueItemFormData, queueItemSchema, defaultValues } from "./schema";
 import { useForm } from "react-hook-form";
@@ -34,6 +40,8 @@ export const FormModal = ({
   queueItem,
   customers = [],
 }: FormModalProps) => {
+  const modalRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
   const [lastAutoFilledPlate, setLastAutoFilledPlate] = useState("");
   const [plateLookupMessage, setPlateLookupMessage] = useState("");
   const {
@@ -71,6 +79,10 @@ export const FormModal = ({
   const plateRegister = register("plate");
 
   useEffect(() => {
+    previousFocusRef.current = document.activeElement as HTMLElement | null;
+    const firstInput = modalRef.current?.querySelector<HTMLInputElement>("input");
+    firstInput?.focus();
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         closeModal();
@@ -78,8 +90,38 @@ export const FormModal = ({
     };
 
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      previousFocusRef.current?.focus();
+    };
   }, [closeModal]);
+
+  const handleDialogKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Tab") {
+      return;
+    }
+
+    const focusableElements = modalRef.current?.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    );
+
+    if (!focusableElements?.length) {
+      return;
+    }
+
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+
+    if (event.shiftKey && document.activeElement === firstElement) {
+      event.preventDefault();
+      lastElement.focus();
+    }
+
+    if (!event.shiftKey && document.activeElement === lastElement) {
+      event.preventDefault();
+      firstElement.focus();
+    }
+  };
 
   const fillValueIfSafe = (
     field: "customerName" | "phone" | "cpf",
@@ -109,7 +151,7 @@ export const FormModal = ({
       setPlateLookupMessage("");
 
       if (showInvalidToast) {
-        toast.error("Informe uma placa valida.");
+        toast.error("Informe uma placa válida.");
       }
 
       return;
@@ -122,11 +164,11 @@ export const FormModal = ({
     const matchedCustomer = customerByPlate.get(normalizedPlate);
 
     if (!matchedCustomer) {
-      setPlateLookupMessage("Placa nao encontrada. Continue o cadastro manual.");
+      setPlateLookupMessage("Placa não encontrada. Continue o cadastro manual.");
       setLastAutoFilledPlate("");
 
       if (showInvalidToast) {
-        toast.info("Placa nao encontrada. Continue o cadastro manual.");
+        toast.info("Placa não encontrada. Continue o cadastro manual.");
       }
 
       return;
@@ -171,7 +213,11 @@ export const FormModal = ({
 
       <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
         <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-          <div className="relative transform overflow-hidden rounded-lg bg-modal text-left shadow-xl sm:w-full sm:max-w-lg">
+          <div
+            ref={modalRef}
+            onKeyDown={handleDialogKeyDown}
+            className="relative transform overflow-hidden rounded-lg bg-modal text-left shadow-xl sm:w-full sm:max-w-lg"
+          >
             <button
               type="button"
               className="absolute top-0 right-0 mt-4 mr-5 text-gray-400 hover:text-gray-600"
@@ -200,17 +246,21 @@ export const FormModal = ({
             >
               <Input
                 type="text"
+                label="Nome do cliente"
                 placeholder="Nome do cliente"
                 {...register("customerName")}
+                required
                 error={errors.customerName?.message}
               />
 
               <Input
                 type="tel"
+                label="Telefone"
                 placeholder="Telefone"
                 {...phoneRegister}
                 inputMode="numeric"
                 maxLength={15}
+                required
                 onChange={(event) => {
                   const value = formatPhone(event.target.value);
                   setValue("phone", value, { shouldValidate: true });
@@ -220,6 +270,7 @@ export const FormModal = ({
 
               <Input
                 type="text"
+                label="CPF"
                 placeholder="CPF (opcional)"
                 {...cpfRegister}
                 inputMode="numeric"
@@ -233,9 +284,11 @@ export const FormModal = ({
 
               <Input
                 type="text"
+                label="Placa"
                 placeholder="Placa"
                 {...plateRegister}
                 maxLength={8}
+                required
                 onChange={(event) => {
                   const value = formatPlateInput(event.target.value);
                   setValue("plate", value, { shouldValidate: true });
@@ -252,23 +305,43 @@ export const FormModal = ({
               />
 
               {plateLookupMessage && (
-                <p className="rounded-md bg-background px-4 py-3 text-sm font-semibold text-title">
+                <p
+                  role="status"
+                  aria-live="polite"
+                  className="rounded-md bg-background px-4 py-3 text-sm font-semibold text-title"
+                >
                   {plateLookupMessage}
                 </p>
               )}
 
               <div className="flex flex-col gap-1">
+                <label
+                  htmlFor="serviceType"
+                  className="px-2 text-sm font-semibold text-title"
+                >
+                  Tipo de serviço *
+                </label>
                 <select
+                  id="serviceType"
                   {...register("serviceType")}
+                  required
+                  aria-invalid={Boolean(errors.serviceType)}
+                  aria-describedby={
+                    errors.serviceType ? "serviceType-error" : undefined
+                  }
                   className="w-full h-16 px-6 py-5 bg-background text-title border border-input-border rounded-md outline-none focus:border-primary"
                 >
                   <option>Lavagem simples</option>
                   <option>Lavagem completa</option>
-                  <option>Higienizacao interna</option>
+                  <option>Higienização interna</option>
                   <option>Polimento</option>
                 </select>
                 {errors.serviceType && (
-                  <span className="text-danger text-sm px-2">
+                  <span
+                    id="serviceType-error"
+                    role="alert"
+                    className="text-danger text-sm px-2"
+                  >
                     {errors.serviceType.message}
                   </span>
                 )}
@@ -278,7 +351,7 @@ export const FormModal = ({
                 type="submit"
                 className="mt-6 mb-16 w-full justify-center rounded-md bg-primary text-white px-3 py-5 text-normal font-semibold shadow-sm hover:opacity-80"
               >
-                {queueItem ? "Salvar atendimento" : "Adicionar a fila"}
+                {queueItem ? "Salvar atendimento" : "Adicionar à fila"}
               </button>
             </form>
           </div>

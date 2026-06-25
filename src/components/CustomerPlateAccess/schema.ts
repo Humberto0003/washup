@@ -3,9 +3,9 @@ import { isValidPlate } from "@/lib/formatters";
 
 export const customerPlateAccessSchema = object({
   plate: string()
-    .required("Informe a placa do veiculo")
+    .required("Informe a placa do veículo")
     .defined()
-    .test("plate-format", "Informe uma placa valida", (value) => {
+    .test("plate-format", "Informe uma placa válida", (value) => {
       if (!value) {
         return false;
       }

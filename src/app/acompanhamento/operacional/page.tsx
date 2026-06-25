@@ -119,11 +119,11 @@ function DashboardContent() {
               Fila de atendimento
             </h1>
             <p className="text-sm text-table-header">
-              Acompanhe os veiculos em atendimento e organize a operacao do lava
+              Acompanhe os veículos em atendimento e organize a operação do lava
               jato.
             </p>
             <p className="mt-1 text-sm text-table-header">
-              Ultima atualizacao: {lastUpdate || "--:--"}
+              Última atualização: {lastUpdate || "--:--"}
             </p>
           </div>
 

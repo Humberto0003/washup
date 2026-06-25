@@ -43,15 +43,15 @@ function FidelidadeContent() {
           <div className="mb-5 rounded-md bg-white p-6 shadow-sm">
             <h1 className="text-2xl font-semibold text-title">Fidelidade</h1>
             <p className="mt-2 text-sm text-table-header">
-              Acompanhe os pontos acumulados e os clientes elegiveis a
-              beneficios.
+              Acompanhe os pontos acumulados e os clientes elegíveis a
+              benefícios.
             </p>
           </div>
 
           <div className="mb-5 rounded-md border border-success/30 bg-success/10 p-4">
             <p className="text-sm font-semibold text-title">
               Programa de fidelidade: a cada 10 lavagens, o cliente ganha 1
-              lavagem simples gratis.
+              lavagem simples grátis.
             </p>
           </div>
 
@@ -66,7 +66,7 @@ function FidelidadeContent() {
             </div>
             <div className="rounded-md bg-white p-5 shadow-sm">
               <span className="text-sm text-table-header">
-                Clientes elegiveis
+                Clientes elegíveis
               </span>
               <strong className="mt-2 block text-3xl font-semibold text-success">
                 {summary.eligible}
@@ -82,7 +82,7 @@ function FidelidadeContent() {
             </div>
             <div className="rounded-md bg-white p-5 shadow-sm">
               <span className="text-sm text-table-header">
-                Beneficios disponiveis
+                Benefícios disponíveis
               </span>
               <strong className="mt-2 block text-3xl font-semibold text-warning">
                 {summary.availableBenefits}
@@ -127,7 +127,7 @@ function FidelidadeContent() {
                           : "bg-background text-title"
                       }`}
                     >
-                      {canRedeem ? "Elegivel ao beneficio" : "Em progresso"}
+                      {canRedeem ? "Elegível ao benefício" : "Em progresso"}
                     </span>
                   </div>
 
@@ -153,7 +153,7 @@ function FidelidadeContent() {
                       onClick={() => redeemBenefit(customer.id)}
                       className="mt-5 w-full rounded-md bg-primary px-4 py-3 text-sm font-semibold text-white hover:opacity-80"
                     >
-                      Resgatar beneficio
+                      Resgatar benefício
                     </button>
                   )}
                 </article>
