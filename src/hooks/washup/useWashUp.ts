@@ -6,9 +6,10 @@ import {
   getCustomers,
   getQueue,
   redeemBenefit,
+  reorderQueueItems,
   updateQueueItem,
 } from "@/services/washup";
-import { NewQueueItemData, UpdateQueueItemData } from "@/types/washup";
+import { NewQueueItemData, QueueItem, UpdateQueueItemData } from "@/types/washup";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 
@@ -89,6 +90,33 @@ const ChangeQueuePriority = () => {
   });
 };
 
+const ReorderQueueItems = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (items: QueueItem[]) => reorderQueueItems(items),
+    onMutate: async (items) => {
+      await queryClient.cancelQueries({ queryKey: [QUEUE_KEY] });
+
+      const previousQueue = queryClient.getQueryData<QueueItem[]>([QUEUE_KEY]);
+      queryClient.setQueryData([QUEUE_KEY], items);
+
+      return { previousQueue };
+    },
+    onError: (_error, _items, context) => {
+      if (context?.previousQueue) {
+        queryClient.setQueryData([QUEUE_KEY], context.previousQueue);
+      }
+
+      toast.error("Nao foi possivel reorganizar a fila.");
+    },
+    onSuccess: (items) => {
+      queryClient.setQueryData([QUEUE_KEY], items);
+      toast.success("Fila reorganizada com sucesso!");
+    },
+  });
+};
+
 const FindCustomers = () => {
   return useQuery({
     queryKey: [CUSTOMERS_KEY],
@@ -115,6 +143,7 @@ export const useWashUp = {
   UpdateQueueItem,
   CancelQueueItem,
   ChangeQueuePriority,
+  ReorderQueueItems,
   FindCustomers,
   RedeemBenefit,
 };

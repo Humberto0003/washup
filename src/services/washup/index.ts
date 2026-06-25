@@ -34,22 +34,27 @@ const writeStorage = <T>(key: string, value: T) => {
 };
 
 const normalizeQueue = (queue: QueueItem[]) => {
-  const nextQueue = [...queue];
+  const positionsByStatus: Record<QueueStatus, number> = {
+    WAITING: 1,
+    WASHING: 1,
+    DONE: 1,
+  };
 
-  (["WAITING", "WASHING", "DONE"] as QueueStatus[]).forEach((status) => {
-    let position = 1;
+  return queue.map((item) => {
+    const currentPosition = positionsByStatus[item.status];
+    positionsByStatus[item.status] += 1;
 
-    nextQueue
-      .filter((item) => item.status === status)
-      .forEach((item) => {
-        item.position = status === "DONE" ? 0 : position;
-        item.etaMinutes =
-          status === "DONE" ? 0 : status === "WASHING" ? 15 : position * 20 + 5;
-        position += 1;
-      });
+    return {
+      ...item,
+      position: item.status === "DONE" ? 0 : currentPosition,
+      etaMinutes:
+        item.status === "DONE"
+          ? 0
+          : item.status === "WASHING"
+            ? 15
+            : currentPosition * 20 + 5,
+    };
   });
-
-  return nextQueue;
 };
 
 const upsertCustomerFromFinishedQueueItem = (queueItem: QueueItem) => {
@@ -235,6 +240,15 @@ export async function changeQueuePriority(id: string, direction: "UP" | "DOWN") 
   writeStorage(QUEUE_STORAGE_KEY, normalizedQueue);
 
   return normalizedQueue.find((item) => item.id === id);
+}
+
+export async function reorderQueueItems(items: QueueItem[]) {
+  await wait();
+
+  const normalizedQueue = normalizeQueue(items);
+  writeStorage(QUEUE_STORAGE_KEY, normalizedQueue);
+
+  return normalizedQueue;
 }
 
 export async function getCustomers() {

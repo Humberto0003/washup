@@ -1,7 +1,9 @@
 "use client";
 
+import { CustomerPlateAccess } from "@/components/CustomerPlateAccess";
 import { Input } from "@/components/Form/Input";
 import { useAuth } from "@/hooks/auth/useAuth";
+import { useWashUp } from "@/hooks/washup/useWashUp";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
@@ -19,6 +21,7 @@ export default function Home() {
     },
   });
   const { signIn } = useAuth();
+  const { data: queueData, isLoading: isQueueLoading } = useWashUp.FindQueue();
   const router = useRouter();
 
   const handleLogin = (data: LoginFormData) => {
@@ -31,10 +34,6 @@ export default function Home() {
 
     toast.success("Login realizado com sucesso!");
     router.push("/acompanhamento/operacional");
-  };
-
-  const handleCustomerAccess = () => {
-    router.push("/acompanhamento/clientes");
   };
 
   return (
@@ -86,16 +85,14 @@ export default function Home() {
               </span>
               <h2 className="mt-2 text-2xl font-semibold">Sou cliente</h2>
               <p className="mt-2 text-sm leading-6 text-white/80">
-                Acompanhe o andamento da fila de atendimento.
+                Informe a placa do seu veiculo para acompanhar apenas o seu
+                atendimento.
               </p>
 
-              <button
-                type="button"
-                onClick={handleCustomerAccess}
-                className="mt-6 w-full rounded-md bg-white px-4 py-4 text-sm font-semibold text-header hover:opacity-90"
-              >
-                Acompanhar fila
-              </button>
+              <CustomerPlateAccess
+                queueItems={queueData ?? []}
+                isLoading={isQueueLoading}
+              />
             </div>
 
             <div className="mt-8 rounded-md bg-white/10 p-5">

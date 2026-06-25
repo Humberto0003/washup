@@ -1,21 +1,30 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Input } from "../Form/Input";
 import { QueueItemFormData, queueItemSchema, defaultValues } from "./schema";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
-import { NewQueueItemData, QueueItem, WashServiceType } from "@/types/washup";
+import {
+  Customer,
+  NewQueueItemData,
+  QueueItem,
+  WashServiceType,
+} from "@/types/washup";
 import {
   formatCpf,
   formatPhone,
   formatPlateInput,
   getPlateRaw,
+  isValidPlate,
 } from "@/lib/formatters";
+import { normalizePlate } from "@/lib/customerAccess";
+import { toast } from "react-toastify";
 
 export type FormModalProps = {
   title: string;
   closeModal: () => void;
   addQueueItem: (item: NewQueueItemData) => void;
   queueItem?: QueueItem | null;
+  customers?: Customer[];
 };
 
 export const FormModal = ({
@@ -23,17 +32,27 @@ export const FormModal = ({
   closeModal,
   addQueueItem,
   queueItem,
+  customers = [],
 }: FormModalProps) => {
+  const [lastAutoFilledPlate, setLastAutoFilledPlate] = useState("");
+  const [plateLookupMessage, setPlateLookupMessage] = useState("");
   const {
     handleSubmit,
     register,
-    formState: { errors },
+    formState: { dirtyFields, errors },
     reset,
     setValue,
+    getValues,
   } = useForm<QueueItemFormData>({
     resolver: yupResolver(queueItemSchema),
     defaultValues,
   });
+
+  const customerByPlate = useMemo(() => {
+    return new Map(
+      customers.map((customer) => [normalizePlate(customer.plate), customer])
+    );
+  }, [customers]);
 
   useEffect(() => {
     if (queueItem) {
@@ -61,6 +80,71 @@ export const FormModal = ({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [closeModal]);
+
+  const fillValueIfSafe = (
+    field: "customerName" | "phone" | "cpf",
+    value: string | undefined,
+    searchedPlate: string
+  ) => {
+    if (!value) {
+      return;
+    }
+
+    const currentValue = getValues(field);
+    const shouldReplace = !currentValue || !dirtyFields[field];
+
+    if (shouldReplace || lastAutoFilledPlate === searchedPlate) {
+      setValue(field, value, { shouldDirty: false, shouldValidate: true });
+    }
+  };
+
+  const handlePlateLookup = (value: string, showInvalidToast = false) => {
+    const normalizedPlate = normalizePlate(value);
+
+    if (normalizedPlate.length < 7) {
+      return;
+    }
+
+    if (!isValidPlate(value)) {
+      setPlateLookupMessage("");
+
+      if (showInvalidToast) {
+        toast.error("Informe uma placa valida.");
+      }
+
+      return;
+    }
+
+    if (normalizedPlate === lastAutoFilledPlate) {
+      return;
+    }
+
+    const matchedCustomer = customerByPlate.get(normalizedPlate);
+
+    if (!matchedCustomer) {
+      setPlateLookupMessage("Placa nao encontrada. Continue o cadastro manual.");
+      setLastAutoFilledPlate("");
+
+      if (showInvalidToast) {
+        toast.info("Placa nao encontrada. Continue o cadastro manual.");
+      }
+
+      return;
+    }
+
+    fillValueIfSafe("customerName", matchedCustomer.name, normalizedPlate);
+    fillValueIfSafe("phone", formatPhone(matchedCustomer.phone), normalizedPlate);
+    fillValueIfSafe(
+      "cpf",
+      matchedCustomer.cpf ? formatCpf(matchedCustomer.cpf) : "",
+      normalizedPlate
+    );
+    setLastAutoFilledPlate(normalizedPlate);
+    setPlateLookupMessage(
+      "Cadastro encontrado. Dados preenchidos automaticamente."
+    );
+    toast.success("Cadastro encontrado. Dados preenchidos automaticamente.");
+  };
 
   const handleSubmitForm = (data: QueueItemFormData) => {
     addQueueItem({
@@ -155,9 +239,23 @@ export const FormModal = ({
                 onChange={(event) => {
                   const value = formatPlateInput(event.target.value);
                   setValue("plate", value, { shouldValidate: true });
+
+                  if (getPlateRaw(value).length === 7) {
+                    handlePlateLookup(value);
+                  }
+                }}
+                onBlur={(event) => {
+                  plateRegister.onBlur(event);
+                  handlePlateLookup(event.target.value, true);
                 }}
                 error={errors.plate?.message}
               />
+
+              {plateLookupMessage && (
+                <p className="rounded-md bg-background px-4 py-3 text-sm font-semibold text-title">
+                  {plateLookupMessage}
+                </p>
+              )}
 
               <div className="flex flex-col gap-1">
                 <select

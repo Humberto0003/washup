@@ -33,6 +33,7 @@ function DashboardContent() {
   const { mutateAsync: advanceQueueItem } = useWashUp.AdvanceQueueItem();
   const { mutateAsync: cancelQueueItem } = useWashUp.CancelQueueItem();
   const { mutateAsync: changeQueuePriority } = useWashUp.ChangeQueuePriority();
+  const { mutateAsync: reorderQueueItems } = useWashUp.ReorderQueueItems();
 
   useEffect(() => {
     setLastUpdate(
@@ -82,6 +83,10 @@ function DashboardContent() {
 
   const handlePriorityChange = async (id: string, direction: "UP" | "DOWN") => {
     await changeQueuePriority({ id, direction });
+  };
+
+  const handleQueueReorder = async (items: QueueItem[]) => {
+    await reorderQueueItems(items);
   };
 
   const summary = useMemo<DashboardSummary>(() => {
@@ -139,6 +144,7 @@ function DashboardContent() {
           onEdit={handleEdit}
           onCancel={handleCancel}
           onPriorityChange={handlePriorityChange}
+          onReorder={handleQueueReorder}
           canManage={canManage}
         />
       </BodyContainer>
@@ -152,6 +158,7 @@ function DashboardContent() {
           title={selectedQueueItem ? "Editar atendimento" : "Novo atendimento"}
           addQueueItem={handleSubmitQueueItem}
           queueItem={selectedQueueItem}
+          customers={customersData ?? []}
         />
       )}
     </div>
