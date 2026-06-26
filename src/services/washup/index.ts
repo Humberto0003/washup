@@ -1,271 +1,200 @@
-import { mockCustomers, mockQueue } from "@/mocks/washup";
+import { apiRequest } from "@/services/apiClient";
 import {
   Customer,
   NewQueueItemData,
   QueueItem,
   QueueStatus,
   UpdateQueueItemData,
+  WashServiceType,
 } from "@/types/washup";
-import { getCpfDigits, getPlateRaw } from "@/lib/formatters";
+import { formatCpf, formatPhone, getPlateRaw } from "@/lib/formatters";
 
-const QUEUE_STORAGE_KEY = "washup:queue";
-const CUSTOMERS_STORAGE_KEY = "washup:customers";
+type ApiWashServiceType =
+  | WashServiceType
+  | "Higienizacao interna"
+  | "Higienização interna";
 
-const wait = async () => new Promise((resolve) => setTimeout(resolve, 250));
-
-const readStorage = <T>(key: string, fallback: T): T => {
-  if (typeof window === "undefined") {
-    return fallback;
-  }
-
-  const value = window.localStorage.getItem(key);
-  if (!value) {
-    window.localStorage.setItem(key, JSON.stringify(fallback));
-    return fallback;
-  }
-
-  return JSON.parse(value) as T;
+type ApiQueueItem = Omit<QueueItem, "serviceType"> & {
+  serviceType: ApiWashServiceType;
 };
 
-const writeStorage = <T>(key: string, value: T) => {
-  if (typeof window !== "undefined") {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  }
-};
-
-const normalizeQueue = (queue: QueueItem[]) => {
-  const positionsByStatus: Record<QueueStatus, number> = {
-    WAITING: 1,
-    WASHING: 1,
-    DONE: 1,
+type VehicleByPlateResponse = {
+  vehicle: {
+    id: string;
+    plate: string;
+    normalizedPlate: string;
   };
-
-  return queue.map((item) => {
-    const currentPosition = positionsByStatus[item.status];
-    positionsByStatus[item.status] += 1;
-
-    return {
-      ...item,
-      position: item.status === "DONE" ? 0 : currentPosition,
-      etaMinutes:
-        item.status === "DONE"
-          ? 0
-          : item.status === "WASHING"
-            ? 15
-            : currentPosition * 20 + 5,
-    };
-  });
+  customer: Customer;
 };
 
-const upsertCustomerFromFinishedQueueItem = (queueItem: QueueItem) => {
-  const customers = readStorage<Customer[]>(CUSTOMERS_STORAGE_KEY, mockCustomers);
-  const cpfDigits = getCpfDigits(queueItem.cpf ?? "");
-  const plateRaw = getPlateRaw(queueItem.plate);
+type AdvanceQueueItemResponse = {
+  item?: ApiQueueItem;
+  finished: boolean;
+};
 
-  const customerByCpfIndex = cpfDigits
-    ? customers.findIndex(
-        (customer) => getCpfDigits(customer.cpf ?? "") === cpfDigits
-      )
-    : -1;
-  const existingCustomerIndex =
-    customerByCpfIndex >= 0
-      ? customerByCpfIndex
-      : customers.findIndex(
-          (customer) => getPlateRaw(customer.plate) === plateRaw
-        );
+const INTERNAL_HYGIENE_SERVICE =
+  "Higienização interna" as WashServiceType;
 
-  if (existingCustomerIndex >= 0) {
-    const nextCustomers = [...customers];
-    const existingCustomer = nextCustomers[existingCustomerIndex];
-
-    nextCustomers[existingCustomerIndex] = {
-      ...existingCustomer,
-      name: queueItem.customerName,
-      phone: queueItem.phone,
-      cpf: queueItem.cpf || existingCustomer.cpf,
-      plate: plateRaw,
-      totalVisits: existingCustomer.totalVisits + 1,
-      loyaltyPoints: existingCustomer.loyaltyPoints + 1,
-    };
-
-    writeStorage(CUSTOMERS_STORAGE_KEY, nextCustomers);
-    return nextCustomers[existingCustomerIndex];
+const toInternalServiceType = (
+  serviceType: ApiWashServiceType
+): WashServiceType => {
+  if (
+    serviceType === "Higienizacao interna" ||
+    serviceType === "Higienização interna"
+  ) {
+    return INTERNAL_HYGIENE_SERVICE;
   }
 
-  const newCustomer: Customer = {
-    id: crypto.randomUUID(),
-    name: queueItem.customerName,
-    phone: queueItem.phone,
-    cpf: queueItem.cpf,
-    plate: plateRaw,
-    totalVisits: 1,
-    loyaltyPoints: 1,
-  };
-
-  writeStorage(CUSTOMERS_STORAGE_KEY, [...customers, newCustomer]);
-  return newCustomer;
+  return serviceType;
 };
+
+const toApiServiceType = (serviceType: WashServiceType): ApiWashServiceType => {
+  if (
+    serviceType === INTERNAL_HYGIENE_SERVICE ||
+    serviceType === ("Higienização interna" as WashServiceType)
+  ) {
+    return "Higienizacao interna";
+  }
+
+  return serviceType;
+};
+
+const normalizeQueueItem = (item: ApiQueueItem): QueueItem => ({
+  ...item,
+  plate: getPlateRaw(item.plate),
+  phone: formatPhone(item.phone),
+  cpf: item.cpf ? formatCpf(item.cpf) : undefined,
+  serviceType: toInternalServiceType(item.serviceType),
+});
+
+const normalizeCustomer = (customer: Customer): Customer => ({
+  ...customer,
+  plate: getPlateRaw(customer.plate),
+  phone: formatPhone(customer.phone),
+  cpf: customer.cpf ? formatCpf(customer.cpf) : undefined,
+});
+
+const toServiceOrderPayload = (data: NewQueueItemData) => ({
+  customerName: data.customerName,
+  phone: formatPhone(data.phone),
+  cpf: data.cpf ? formatCpf(data.cpf) : undefined,
+  plate: getPlateRaw(data.plate),
+  serviceType: toApiServiceType(data.serviceType),
+});
 
 export async function getQueue() {
-  await wait();
-  return normalizeQueue(readStorage<QueueItem[]>(QUEUE_STORAGE_KEY, mockQueue));
+  const queue = await apiRequest<ApiQueueItem[]>("/service-orders");
+  return queue.map(normalizeQueueItem);
 }
 
 export async function createQueueItem(data: NewQueueItemData) {
-  await wait();
+  const item = await apiRequest<ApiQueueItem>("/service-orders", {
+    method: "POST",
+    body: JSON.stringify(toServiceOrderPayload(data)),
+  });
 
-  const queue = readStorage<QueueItem[]>(QUEUE_STORAGE_KEY, mockQueue);
-  const waitingCount = queue.filter((item) => item.status === "WAITING").length;
-
-  const newItem: QueueItem = {
-    id: crypto.randomUUID(),
-    ...data,
-    plate: getPlateRaw(data.plate),
-    status: "WAITING",
-    position: waitingCount + 1,
-    etaMinutes: (waitingCount + 1) * 20 + 5,
-    createdAt: new Date().toISOString(),
-  };
-
-  const nextQueue = normalizeQueue([...queue, newItem]);
-  writeStorage(QUEUE_STORAGE_KEY, nextQueue);
-
-  return newItem;
+  return normalizeQueueItem(item);
 }
 
 export async function advanceQueueItem(id: string) {
-  await wait();
-
-  const queue = readStorage<QueueItem[]>(QUEUE_STORAGE_KEY, mockQueue);
-  let finishedItem: QueueItem | null = null;
-
-  const nextQueue = queue.map((item) => {
-    if (item.id !== id) {
-      return item;
+  const data = await apiRequest<AdvanceQueueItemResponse>(
+    `/service-orders/${id}/advance`,
+    {
+      method: "PATCH",
     }
-
-    const nextStatus: QueueStatus =
-      item.status === "WAITING" ? "WASHING" : "DONE";
-
-    const updatedItem = {
-      ...item,
-      status: nextStatus,
-    };
-
-    if (item.status !== "DONE" && nextStatus === "DONE") {
-      finishedItem = updatedItem;
-    }
-
-    return updatedItem;
-  });
-
-  const normalizedQueue = normalizeQueue(nextQueue);
-  writeStorage(QUEUE_STORAGE_KEY, normalizedQueue);
-
-  if (finishedItem) {
-    upsertCustomerFromFinishedQueueItem(finishedItem);
-  }
+  );
 
   return {
-    item: normalizedQueue.find((item) => item.id === id),
-    finished: Boolean(finishedItem),
+    ...data,
+    item: data.item ? normalizeQueueItem(data.item) : undefined,
   };
 }
 
 export async function updateQueueItem(data: UpdateQueueItemData) {
-  await wait();
+  const item = await apiRequest<ApiQueueItem>(`/service-orders/${data.id}`, {
+    method: "PATCH",
+    body: JSON.stringify(toServiceOrderPayload(data)),
+  });
 
-  const queue = readStorage<QueueItem[]>(QUEUE_STORAGE_KEY, mockQueue);
-  const nextQueue = queue.map((item) =>
-    item.id === data.id
-      ? {
-          ...item,
-          customerName: data.customerName,
-          phone: data.phone,
-          cpf: data.cpf,
-          plate: getPlateRaw(data.plate),
-          serviceType: data.serviceType,
-        }
-      : item
-  );
-
-  const normalizedQueue = normalizeQueue(nextQueue);
-  writeStorage(QUEUE_STORAGE_KEY, normalizedQueue);
-
-  return normalizedQueue.find((item) => item.id === data.id);
+  return normalizeQueueItem(item);
 }
 
 export async function cancelQueueItem(id: string) {
-  await wait();
+  const data = await apiRequest<string | { id: string }>(
+    `/service-orders/${id}`,
+    {
+      method: "DELETE",
+    }
+  );
 
-  const queue = readStorage<QueueItem[]>(QUEUE_STORAGE_KEY, mockQueue);
-  const nextQueue = normalizeQueue(queue.filter((item) => item.id !== id));
-  writeStorage(QUEUE_STORAGE_KEY, nextQueue);
-
-  return id;
+  return typeof data === "string" ? data : data.id;
 }
 
 export async function changeQueuePriority(id: string, direction: "UP" | "DOWN") {
-  await wait();
-
-  const queue = normalizeQueue(readStorage<QueueItem[]>(QUEUE_STORAGE_KEY, mockQueue));
-  const waitingItems = queue
-    .filter((item) => item.status === "WAITING")
-    .sort((a, b) => a.position - b.position);
-  const currentIndex = waitingItems.findIndex((item) => item.id === id);
-
-  if (currentIndex === -1) {
-    return queue.find((item) => item.id === id);
-  }
-
-  const targetIndex = direction === "UP" ? currentIndex - 1 : currentIndex + 1;
-  if (!waitingItems[targetIndex]) {
-    return waitingItems[currentIndex];
-  }
-
-  const reorderedWaitingItems = [...waitingItems];
-  const [currentItem] = reorderedWaitingItems.splice(currentIndex, 1);
-  reorderedWaitingItems.splice(targetIndex, 0, currentItem);
-
-  const nextQueue = queue.map((item) => {
-    if (item.status !== "WAITING") {
-      return item;
-    }
-
-    const reorderedItem = reorderedWaitingItems.shift();
-    return reorderedItem ?? item;
+  const item = await apiRequest<ApiQueueItem>(`/service-orders/${id}/priority`, {
+    method: "PATCH",
+    body: JSON.stringify({ direction }),
   });
 
-  const normalizedQueue = normalizeQueue(nextQueue);
-  writeStorage(QUEUE_STORAGE_KEY, normalizedQueue);
-
-  return normalizedQueue.find((item) => item.id === id);
+  return normalizeQueueItem(item);
 }
 
 export async function reorderQueueItems(items: QueueItem[]) {
-  await wait();
+  const queue = await apiRequest<ApiQueueItem[]>("/service-orders/reorder", {
+    method: "PATCH",
+    body: JSON.stringify({
+      items: items.map((item) => ({
+        id: item.id,
+        status: item.status,
+        position: item.status === "DONE" ? 0 : item.position,
+      })),
+    }),
+  });
 
-  const normalizedQueue = normalizeQueue(items);
-  writeStorage(QUEUE_STORAGE_KEY, normalizedQueue);
+  return queue.map(normalizeQueueItem);
+}
 
-  return normalizedQueue;
+export async function moveQueueItemStatus(id: string, status: QueueStatus) {
+  const item = await apiRequest<ApiQueueItem>(`/service-orders/${id}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
+
+  return normalizeQueueItem(item);
 }
 
 export async function getCustomers() {
-  await wait();
-  return readStorage<Customer[]>(CUSTOMERS_STORAGE_KEY, mockCustomers);
+  const customers = await apiRequest<Customer[]>("/customers");
+  return customers.map(normalizeCustomer);
+}
+
+export async function getVehicleByPlate(plate: string) {
+  const data = await apiRequest<VehicleByPlateResponse>(
+    `/vehicles/by-plate/${getPlateRaw(plate)}`
+  );
+
+  return {
+    vehicle: {
+      ...data.vehicle,
+      plate: getPlateRaw(data.vehicle.plate),
+      normalizedPlate: getPlateRaw(data.vehicle.normalizedPlate),
+    },
+    customer: normalizeCustomer(data.customer),
+  };
+}
+
+export async function getTrackingByPlate(plate: string) {
+  const item = await apiRequest<ApiQueueItem>(`/tracking/${getPlateRaw(plate)}`);
+  return normalizeQueueItem(item);
 }
 
 export async function redeemBenefit(customerId: string) {
-  await wait();
-
-  const customers = readStorage<Customer[]>(CUSTOMERS_STORAGE_KEY, mockCustomers);
-  const nextCustomers = customers.map((customer) =>
-    customer.id === customerId
-      ? { ...customer, loyaltyPoints: Math.max(customer.loyaltyPoints - 10, 0) }
-      : customer
+  const customer = await apiRequest<Customer>(
+    `/customers/${customerId}/redeem-benefit`,
+    {
+      method: "POST",
+    }
   );
 
-  writeStorage(CUSTOMERS_STORAGE_KEY, nextCustomers);
-  return nextCustomers.find((customer) => customer.id === customerId);
+  return normalizeCustomer(customer);
 }

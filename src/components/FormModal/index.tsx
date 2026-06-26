@@ -1,7 +1,7 @@
 import {
   type KeyboardEvent as ReactKeyboardEvent,
+  useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
@@ -9,12 +9,7 @@ import { Input } from "../Form/Input";
 import { QueueItemFormData, queueItemSchema, defaultValues } from "./schema";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
-import {
-  Customer,
-  NewQueueItemData,
-  QueueItem,
-  WashServiceType,
-} from "@/types/washup";
+import { NewQueueItemData, QueueItem, WashServiceType } from "@/types/washup";
 import {
   formatCpf,
   formatPhone,
@@ -24,13 +19,14 @@ import {
 } from "@/lib/formatters";
 import { normalizePlate } from "@/lib/customerAccess";
 import { toast } from "react-toastify";
+import { useWashUp } from "@/hooks/washup/useWashUp";
+import { getApiErrorMessage } from "@/services/apiClient";
 
 export type FormModalProps = {
   title: string;
   closeModal: () => void;
   addQueueItem: (item: NewQueueItemData) => void;
   queueItem?: QueueItem | null;
-  customers?: Customer[];
 };
 
 export const FormModal = ({
@@ -38,11 +34,12 @@ export const FormModal = ({
   closeModal,
   addQueueItem,
   queueItem,
-  customers = [],
 }: FormModalProps) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const lastHandledLookupPlateRef = useRef("");
   const [lastAutoFilledPlate, setLastAutoFilledPlate] = useState("");
+  const [lookupPlate, setLookupPlate] = useState("");
   const [plateLookupMessage, setPlateLookupMessage] = useState("");
   const {
     handleSubmit,
@@ -56,11 +53,10 @@ export const FormModal = ({
     defaultValues,
   });
 
-  const customerByPlate = useMemo(() => {
-    return new Map(
-      customers.map((customer) => [normalizePlate(customer.plate), customer])
-    );
-  }, [customers]);
+  const plateLookup = useWashUp.FindVehicleByPlate(
+    lookupPlate,
+    Boolean(lookupPlate)
+  );
 
   useEffect(() => {
     if (queueItem) {
@@ -123,22 +119,68 @@ export const FormModal = ({
     }
   };
 
-  const fillValueIfSafe = (
-    field: "customerName" | "phone" | "cpf",
-    value: string | undefined,
-    searchedPlate: string
-  ) => {
-    if (!value) {
+  const fillValueIfSafe = useCallback(
+    (
+      field: "customerName" | "phone" | "cpf",
+      value: string | undefined,
+      searchedPlate: string
+    ) => {
+      if (!value) {
+        return;
+      }
+
+      const currentValue = getValues(field);
+      const shouldReplace = !currentValue || !dirtyFields[field];
+
+      if (shouldReplace || lastAutoFilledPlate === searchedPlate) {
+        setValue(field, value, { shouldDirty: false, shouldValidate: true });
+      }
+    },
+    [dirtyFields, getValues, lastAutoFilledPlate, setValue]
+  );
+
+  useEffect(() => {
+    if (
+      !lookupPlate ||
+      plateLookup.isFetching ||
+      lastHandledLookupPlateRef.current === lookupPlate
+    ) {
       return;
     }
 
-    const currentValue = getValues(field);
-    const shouldReplace = !currentValue || !dirtyFields[field];
+    if (plateLookup.isSuccess && plateLookup.data) {
+      const matchedCustomer = plateLookup.data.customer;
 
-    if (shouldReplace || lastAutoFilledPlate === searchedPlate) {
-      setValue(field, value, { shouldDirty: false, shouldValidate: true });
+      fillValueIfSafe("customerName", matchedCustomer.name, lookupPlate);
+      fillValueIfSafe("phone", formatPhone(matchedCustomer.phone), lookupPlate);
+      fillValueIfSafe(
+        "cpf",
+        matchedCustomer.cpf ? formatCpf(matchedCustomer.cpf) : "",
+        lookupPlate
+      );
+      setLastAutoFilledPlate(lookupPlate);
+      setPlateLookupMessage(
+        "Cadastro encontrado. Dados preenchidos automaticamente."
+      );
+      toast.success("Cadastro encontrado. Dados preenchidos automaticamente.");
+      lastHandledLookupPlateRef.current = lookupPlate;
     }
-  };
+
+    if (plateLookup.isError) {
+      setPlateLookupMessage("Placa não encontrada. Continue o cadastro manual.");
+      setLastAutoFilledPlate("");
+      toast.info(getApiErrorMessage(plateLookup.error));
+      lastHandledLookupPlateRef.current = lookupPlate;
+    }
+  }, [
+    fillValueIfSafe,
+    lookupPlate,
+    plateLookup.data,
+    plateLookup.error,
+    plateLookup.isError,
+    plateLookup.isFetching,
+    plateLookup.isSuccess,
+  ]);
 
   const handlePlateLookup = (value: string, showInvalidToast = false) => {
     const normalizedPlate = normalizePlate(value);
@@ -161,31 +203,13 @@ export const FormModal = ({
       return;
     }
 
-    const matchedCustomer = customerByPlate.get(normalizedPlate);
+    setPlateLookupMessage("Buscando cadastro pela placa...");
+    setLookupPlate(normalizedPlate);
 
-    if (!matchedCustomer) {
-      setPlateLookupMessage("Placa não encontrada. Continue o cadastro manual.");
-      setLastAutoFilledPlate("");
-
-      if (showInvalidToast) {
-        toast.info("Placa não encontrada. Continue o cadastro manual.");
-      }
-
-      return;
+    if (showInvalidToast && normalizedPlate === lookupPlate) {
+      lastHandledLookupPlateRef.current = "";
+      plateLookup.refetch();
     }
-
-    fillValueIfSafe("customerName", matchedCustomer.name, normalizedPlate);
-    fillValueIfSafe("phone", formatPhone(matchedCustomer.phone), normalizedPlate);
-    fillValueIfSafe(
-      "cpf",
-      matchedCustomer.cpf ? formatCpf(matchedCustomer.cpf) : "",
-      normalizedPlate
-    );
-    setLastAutoFilledPlate(normalizedPlate);
-    setPlateLookupMessage(
-      "Cadastro encontrado. Dados preenchidos automaticamente."
-    );
-    toast.success("Cadastro encontrado. Dados preenchidos automaticamente.");
   };
 
   const handleSubmitForm = (data: QueueItemFormData) => {

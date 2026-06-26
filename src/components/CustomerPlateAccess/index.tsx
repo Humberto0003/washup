@@ -2,7 +2,7 @@
 
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 import { Input } from "../Form/Input";
@@ -11,25 +11,29 @@ import {
   customerPlateAccessSchema,
   defaultValues,
 } from "./schema";
-import { formatPlateInput } from "@/lib/formatters";
+import { formatPlateInput, getPlateRaw } from "@/lib/formatters";
 import {
   CUSTOMER_PLATE_STORAGE_KEY,
-  findQueueItemByPlate,
   normalizePlate,
 } from "@/lib/customerAccess";
-import { QueueItem } from "@/types/washup";
+import { useWashUp } from "@/hooks/washup/useWashUp";
+import { getApiErrorMessage } from "@/services/apiClient";
 
 export type CustomerPlateAccessProps = {
-  queueItems: QueueItem[];
   isLoading?: boolean;
 };
 
 export const CustomerPlateAccess = ({
-  queueItems,
   isLoading = false,
 }: CustomerPlateAccessProps) => {
   const router = useRouter();
   const [accessMessage, setAccessMessage] = useState("");
+  const [submittedPlate, setSubmittedPlate] = useState("");
+  const handledPlateRef = useRef("");
+  const tracking = useWashUp.FindTrackingByPlate(
+    submittedPlate,
+    Boolean(submittedPlate)
+  );
   const {
     handleSubmit,
     register,
@@ -42,23 +46,52 @@ export const CustomerPlateAccess = ({
 
   const plateRegister = register("plate");
 
-  const handleCustomerAccess = (data: CustomerPlateAccessFormData) => {
-    const queueItem = findQueueItemByPlate(queueItems, data.plate);
-
-    if (!queueItem) {
-      setAccessMessage("Não encontramos nenhum veículo com essa placa.");
-      toast.error("Não encontramos nenhum veículo com essa placa.");
+  useEffect(() => {
+    if (
+      !submittedPlate ||
+      tracking.isFetching ||
+      handledPlateRef.current === submittedPlate
+    ) {
       return;
     }
 
-    sessionStorage.setItem(
-      CUSTOMER_PLATE_STORAGE_KEY,
-      normalizePlate(queueItem.plate)
-    );
-    setAccessMessage("Veículo encontrado. Abrindo acompanhamento.");
-    toast.success("Veículo encontrado! Abrindo acompanhamento.");
-    router.push("/acompanhamento/clientes");
+    if (tracking.isSuccess && tracking.data) {
+      sessionStorage.setItem(
+        CUSTOMER_PLATE_STORAGE_KEY,
+        normalizePlate(tracking.data.plate)
+      );
+      setAccessMessage("Veículo encontrado. Abrindo acompanhamento.");
+      toast.success("Veículo encontrado! Abrindo acompanhamento.");
+      handledPlateRef.current = submittedPlate;
+      router.push("/acompanhamento/clientes");
+    }
+
+    if (tracking.isError) {
+      setAccessMessage("Não encontramos nenhum veículo com essa placa.");
+      toast.error(getApiErrorMessage(tracking.error));
+      handledPlateRef.current = submittedPlate;
+    }
+  }, [
+    router,
+    submittedPlate,
+    tracking.data,
+    tracking.error,
+    tracking.isError,
+    tracking.isFetching,
+    tracking.isSuccess,
+  ]);
+
+  const handleCustomerAccess = (data: CustomerPlateAccessFormData) => {
+    const plate = getPlateRaw(data.plate);
+    handledPlateRef.current = "";
+    setSubmittedPlate(plate);
+
+    if (plate === submittedPlate) {
+      tracking.refetch();
+    }
   };
+
+  const isChecking = isLoading || tracking.isFetching;
 
   return (
     <form
@@ -73,7 +106,7 @@ export const CustomerPlateAccess = ({
         maxLength={8}
         autoComplete="off"
         required
-        aria-busy={isLoading}
+        aria-busy={isChecking}
         onChange={(event) => {
           const value = formatPlateInput(event.target.value);
           setValue("plate", value, { shouldValidate: true });
@@ -83,10 +116,10 @@ export const CustomerPlateAccess = ({
 
       <button
         type="submit"
-        disabled={isLoading}
+        disabled={isChecking}
         className="w-full rounded-md bg-white px-4 py-4 text-sm font-semibold text-header hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
       >
-        {isLoading ? "Consultando fila..." : "Acompanhar meu veículo"}
+        {isChecking ? "Consultando fila..." : "Acompanhar meu veículo"}
       </button>
 
       {accessMessage && (

@@ -3,7 +3,6 @@
 import { CustomerPlateAccess } from "@/components/CustomerPlateAccess";
 import { Input } from "@/components/Form/Input";
 import { useAuth } from "@/hooks/auth/useAuth";
-import { useWashUp } from "@/hooks/washup/useWashUp";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -23,7 +22,6 @@ export default function Home() {
     },
   });
   const { signIn } = useAuth();
-  const { data: queueData, isLoading: isQueueLoading } = useWashUp.FindQueue();
   const router = useRouter();
 
   const handleLogin = (data: LoginFormData) => {
@@ -113,10 +111,7 @@ export default function Home() {
                 atendimento.
               </p>
 
-              <CustomerPlateAccess
-                queueItems={queueData ?? []}
-                isLoading={isQueueLoading}
-              />
+              <CustomerPlateAccess />
             </div>
 
             <div className="mt-8 rounded-md bg-white/10 p-5">

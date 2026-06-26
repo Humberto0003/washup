@@ -26,25 +26,31 @@ consultas com TanStack Query, formulários validados e interface responsiva.
 - Cadastro de novo atendimento por modal.
 - Validação de formulário com schema.
 - Avanço de veículos entre status da fila.
-- Toasts de sucesso para ações do usuário.
+- Toasts de sucesso e erro para ações do usuário.
 - Página de clientes.
-- Página de fidelidade com simulação de resgate.
-- Página pública de acompanhamento da fila.
+- Página de fidelidade com resgate de benefício.
+- Página pública de acompanhamento por placa.
 - Layout responsivo para diferentes tamanhos de tela.
 
 ## Rotas Principais
 
 - `/`: tela inicial/login.
-- `/acompanhamento/clientes`: fila pública do cliente.
+- `/acompanhamento/clientes`: acompanhamento público do cliente por placa.
 - `/acompanhamento/operacional`: área operacional protegida.
 - `/clientes`: clientes, protegido.
 - `/fidelidade`: fidelidade, protegido.
 
-## Observação Sobre os Dados
+## Configuração da API
 
-Nesta etapa, o WashUp não possui backend, banco de dados, Prisma, API real ou
-autenticação. Todos os dados são mockados no front-end e persistidos localmente
-com `localStorage`.
+O frontend consome a API definida em `API_CONTRACT.md`.
+
+Crie um arquivo `.env.local` local com:
+
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:3001
+```
+
+O arquivo `.env.local` não deve ser versionado. Use `.env.example` como base.
 
 ## Como Instalar e Executar
 

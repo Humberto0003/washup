@@ -158,7 +158,6 @@ function DashboardContent() {
           title={selectedQueueItem ? "Editar atendimento" : "Novo atendimento"}
           addQueueItem={handleSubmitQueueItem}
           queueItem={selectedQueueItem}
-          customers={customersData ?? []}
         />
       )}
     </div>

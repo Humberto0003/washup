@@ -1,14 +1,11 @@
 "use client";
 
 import { useWashUp } from "@/hooks/washup/useWashUp";
-import {
-  CUSTOMER_PLATE_STORAGE_KEY,
-  findQueueItemByPlate,
-} from "@/lib/customerAccess";
+import { CUSTOMER_PLATE_STORAGE_KEY } from "@/lib/customerAccess";
 import { formatPlateInput } from "@/lib/formatters";
 import { QueueItem, QueueStatus } from "@/types/washup";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 const statusLabel: Record<QueueStatus, string> = {
   WAITING: "Aguardando",
@@ -174,30 +171,30 @@ const CustomerVehicleView = ({ item }: { item: QueueItem }) => {
 };
 
 export default function AcompanhamentoClientesPage() {
-  const { data: queueData, isLoading } = useWashUp.FindQueue();
   const [customerPlate, setCustomerPlate] = useState("");
   const [hasCheckedAccess, setHasCheckedAccess] = useState(false);
   const router = useRouter();
+  const {
+    data: queueItem,
+    isError,
+    isLoading,
+    isFetching,
+  } = useWashUp.FindTrackingByPlate(
+    customerPlate,
+    hasCheckedAccess && Boolean(customerPlate)
+  );
 
   useEffect(() => {
     setCustomerPlate(sessionStorage.getItem(CUSTOMER_PLATE_STORAGE_KEY) ?? "");
     setHasCheckedAccess(true);
   }, []);
 
-  const queueItem = useMemo(() => {
-    if (!customerPlate) {
-      return undefined;
-    }
-
-    return findQueueItemByPlate(queueData ?? [], customerPlate);
-  }, [customerPlate, queueData]);
-
   const handleBackToAccess = () => {
     sessionStorage.removeItem(CUSTOMER_PLATE_STORAGE_KEY);
     router.push("/");
   };
 
-  if (isLoading || !hasCheckedAccess) {
+  if (isLoading || isFetching || !hasCheckedAccess) {
     return <div className="p-8 text-title">Carregando acompanhamento...</div>;
   }
 
@@ -234,7 +231,7 @@ export default function AcompanhamentoClientesPage() {
           </section>
         )}
 
-        {customerPlate && !queueItem && (
+        {customerPlate && (isError || !queueItem) && (
           <section className="rounded-md bg-white p-6 text-center shadow-sm">
             <span className="text-sm font-semibold text-primary">WashUp</span>
             <h1 className="mt-2 text-3xl font-semibold text-title">
